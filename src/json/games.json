@@ -1,5 +1,12 @@
 [
 	{
+		"name": "!Krunk.io",
+		"url": "https://krunk.io/",
+		"image": "/assets/imgs/g/Krunk_io.webp",
+		"tags": ["all", "multiplayer"],
+		"engine": "iframe"
+	},
+	{
 		"name": "1v1.LOL",
 		"url": "https://1v1.lol/",
 		"image": "/assets/imgs/g/1v1_LOL.webp",
