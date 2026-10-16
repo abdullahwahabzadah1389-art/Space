@@ -85,15 +85,13 @@ export function scrubText(
 				)
 			)
 	);
-	for (const symbol of ['scramjetPath', 'scramitize', ...abi])
+	for (const symbol of ['scramitize', ...abi])
 		text = text.replace(new RegExp(escape(symbol), 'g'), guard);
-	// Stable settings/wire keys are not renamed; their values survive reloads.
-	text = text.replace(
-		/(['"`])(?:epoxy|libcurl|Scramjet|Ultraviolet|Libcurl|Epoxy|Libcurl\.js|Epoxy TLS)\1/g,
-		guard
-	);
-	text = text.replace(/(?<![\w/'"`])(?:epoxy|libcurl)(?![\w/\-])/g, guard);
-	text = text.replace(/\b(?:Scramjet|Libcurl|Epoxy)(?=\s*:)/g, guard);
+	// Display labels, settings keys and engine path keys are in-bundle
+	// vocabulary: every writer and reader ships inside scrubbed output, stored
+	// client values degrade through ignore-input normalizers and same-bundle
+	// fallbacks, and no served file outside the scrub reads the literal. Only
+	// URLs, base64, WASM bytes and proven ABI names stay verbatim.
 	text = replaceWords(text, vocabulary);
 	return text.replace(
 		new RegExp(`${marker}(\\d+)__`, 'g'),

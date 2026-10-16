@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { join, relative, posix } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import { walkFiles, isDeveloperArtifact } from './scrub';
@@ -21,10 +21,18 @@ const REMOVED_RUNTIME_TEXT =
 
 // The bootstrap name and its global slot are build vocabulary, not an ABI.
 // Discover the worker's first relative bootstrap import and identify its
-// self-contained configuration by shape, never by a pre-scrub name.
+// self-contained configuration by shape, never by a pre-scrub name. The
+// engine entry key is emitted vocabulary too (renamed by the scrub), so it is
+// resolved by shape as well: the config's extra script-valued string property
+// that points at an emitted file. Virtual/unemitted paths never match.
 export async function readWorkerRuntime(
 	dir: string
-): Promise<{ bootstrapPath: string; config: any; worker: string }> {
+): Promise<{
+	bootstrapPath: string;
+	config: any;
+	worker: string;
+	enginePath: string;
+}> {
 	const worker = await readFile(join(dir, 'sw.js'), 'utf8');
 	const ref = worker.match(
 		/\bimportScripts\(\s*(['"])(\.\/[^'"\s]+\.js)\1\s*\)/
@@ -43,7 +51,6 @@ export async function readWorkerRuntime(
 		(value: any) =>
 			value &&
 			typeof value.prefix === 'string' &&
-			typeof value.scramjetPath === 'string' &&
 			typeof value.wasmPath === 'string' &&
 			typeof value.injectPath === 'string' &&
 			typeof value.codec?.encode === 'function' &&
@@ -53,7 +60,29 @@ export async function readWorkerRuntime(
 		throw new Error(
 			'Worker bootstrap must expose one runtime configuration'
 		);
-	return { bootstrapPath, config: configs[0], worker };
+	const config: any = configs[0];
+	const candidates = Object.entries(config)
+		.filter(
+			([key, value]) =>
+				typeof value === 'string' &&
+				!['prefix', 'wasmPath', 'injectPath', 'buildId'].includes(
+					key
+				) &&
+				/\.[cm]?js$/.test(value as string)
+		)
+		.map(([, value]) => value as string);
+	const enginePaths: string[] = [];
+	for (const candidate of candidates) {
+		try {
+			await stat(join(dir, candidate.replace(/^\//, '')));
+			enginePaths.push(candidate);
+		} catch {
+			// Virtual or otherwise unemitted script paths are not the engine.
+		}
+	}
+	if (enginePaths.length !== 1)
+		throw new Error('Worker bootstrap must expose one engine path');
+	return { bootstrapPath, config, worker, enginePath: enginePaths[0]! };
 }
 
 export async function assertArtifacts(
@@ -184,11 +213,12 @@ export async function assertArtifacts(
 	const {
 		bootstrapPath,
 		config: proxy,
-		worker
+		worker,
+		enginePath
 	} = await readWorkerRuntime(dir);
 	if (proxy?.prefix !== '/s/res/')
 		throw new Error('Page/worker prefix mismatch');
-	for (const path of [proxy.scramjetPath, proxy.wasmPath, proxy.injectPath])
+	for (const path of [enginePath, proxy.wasmPath, proxy.injectPath])
 		check(path, bootstrapPath);
 	for (const url of [
 		'https://test/雪/😀?q=a%20b#fragment',

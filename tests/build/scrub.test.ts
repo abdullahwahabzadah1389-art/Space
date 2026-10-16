@@ -22,7 +22,7 @@ test('preserves the boolean scramitize flag consumed by WASM', () => {
 	expect(new Function(output)()).toEqual({ scramitize: false });
 });
 test.each(["'", '"', '`'])(
-	'keeps settings labels and lookup keys intact with %s strings',
+	'settings labels and lookup keys are renamed consistently with %s strings',
 	quote => {
 		const source = `const proxies={Scramjet:${quote}sj${quote}};
 	const transports={Libcurl:${quote}libcurl${quote},Epoxy:${quote}epoxy${quote}};
@@ -34,14 +34,15 @@ test.each(["'", '"', '`'])(
 			libcurl: 'abcdefg',
 			epoxy: 'abcde'
 		});
+		expect(output).not.toMatch(/scramjet|libcurl|epoxy/i);
 		expect(new Function(output)()).toEqual({
-			labels: ['Scramjet', 'Libcurl', 'Epoxy'],
-			values: ['sj', 'libcurl', 'epoxy'],
+			labels: ['abcdefgh', 'abcdefg', 'abcde'],
+			values: ['sj', 'abcdefg', 'abcde'],
 			paths: ['/s/abcdefgh.js', '/l/abcdefg.js', '/ep/abcde.js']
 		});
 	}
 );
-test('runtime public property names stay stable while their asset paths change', () => {
+test('engine path property names are renamed consistently with their asset paths', () => {
 	expect(
 		scrubText('const config={scramjetPath:"/s/scramjet.js"}', {
 			scramjet: 'abcdefgh',
@@ -51,9 +52,9 @@ test('runtime public property names stay stable while their asset paths change',
 			scram: 'abcde',
 			bare: 'abcd'
 		})
-	).toContain('scramjetPath:"/s/abcdefgh.js"');
+	).toContain('abcdefghPath:"/s/abcdefgh.js"');
 });
-test('saved transport values still address module keys and fallback properties', () => {
+test('saved transport values still address renamed module keys and fallback properties', () => {
 	const vocab = {
 		scramjet: 'abcdefgh',
 		ultraviolet: 'abcdefghijk',
@@ -64,9 +65,13 @@ test('saved transport values still address module keys and fallback properties',
 	};
 	const source = `const modules={libcurl:'/l/libcurl.js',epoxy:'/ep/epoxy.js'}; const saved='libcurl'; modules[saved]||modules.libcurl;`;
 	const result = scrubText(source, vocab);
-	expect(result).toContain('modules.libcurl');
-	expect(result).toContain("libcurl:'/l/abcdefg.js'");
-	expect(result).toContain("epoxy:'/ep/abcde.js'");
+	expect(result).not.toMatch(/libcurl|epoxy/i);
+	expect(result).toContain('modules.abcdefg');
+	expect(result).toContain("abcdefg:'/l/abcdefg.js'");
+	expect(result).toContain("abcde:'/ep/abcde.js'");
+	expect(new Function(`${result};return modules[saved];`)()).toBe(
+		'/l/abcdefg.js'
+	);
 });
 test('dynamic external URL expressions rename identifiers but not remote path literals', () => {
 	const result = scrubText(

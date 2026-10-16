@@ -12,7 +12,7 @@ const { readWorkerRuntime } = await tsImport(
 	'../../srv/vite/assert-artifacts.ts',
 	import.meta.url
 );
-const { bootstrapPath, config } = await readWorkerRuntime(dist);
+const { bootstrapPath, config, enginePath } = await readWorkerRuntime(dist);
 // The slot name is emitted vocabulary too; share the discovered configuration
 // through a fixture-only global rather than relying on its source spelling.
 const controllerSource = readFileSync(
@@ -32,7 +32,7 @@ const server = createServer((req, res) => {
 	}
 	if (url.pathname === '/task7-fixture') {
 		res.setHeader('Content-Type', 'text/html');
-		res.end(`<!doctype html><meta charset="utf-8"><script src="/${bootstrapPath}"></script><script>window.fixtureConfig=Object.values(Object.getOwnPropertyDescriptors(window)).map(d=>d.value).find(v=>v&&v.prefix===${JSON.stringify(config.prefix)}&&typeof v.codec?.encode==='function'&&typeof v.codec?.decode==='function');</script><script src="${config.scramjetPath}"></script><script src="/c/controller.api.js"></script><iframe id="game"></iframe><script>
+		res.end(`<!doctype html><meta charset="utf-8"><script src="/${bootstrapPath}"></script><script>window.fixtureConfig=Object.values(Object.getOwnPropertyDescriptors(window)).map(d=>d.value).find(v=>v&&v.prefix===${JSON.stringify(config.prefix)}&&typeof v.codec?.encode==='function'&&typeof v.codec?.decode==='function');</script><script src="${enginePath}"></script><script src="/c/controller.api.js"></script><iframe id="game"></iframe><script>
     (async()=>{
       const reg=await navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'});await navigator.serviceWorker.ready;
       if(!navigator.serviceWorker.controller)await new Promise(r=>navigator.serviceWorker.addEventListener('controllerchange',r,{once:true}));

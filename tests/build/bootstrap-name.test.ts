@@ -87,7 +87,8 @@ test('final output hides bootstrap filename and controller global while page and
 		const {
 			worker,
 			bootstrapPath: bootstrap,
-			config: emittedConfig
+			config: emittedConfig,
+			enginePath
 		} = await readWorkerRuntime(dir);
 		expect(emittedConfig.buildId).toBe('bootstrap-test');
 		expect(await readFile(`${dir}/index.html`, 'utf8')).toContain(
@@ -101,7 +102,7 @@ test('final output hides bootstrap filename and controller global while page and
 		const page = makeContext();
 		for (const name of [
 			bootstrap,
-			emittedConfig.scramjetPath.slice(1),
+			enginePath.slice(1),
 			'c/controller.api.js',
 			'page.js'
 		])
